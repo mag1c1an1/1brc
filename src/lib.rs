@@ -1,4 +1,4 @@
-use std::{clone, f64};
+use std::f64;
 
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
