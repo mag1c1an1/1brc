@@ -5,7 +5,7 @@ baseline:
     time cargo run --release --bin baseline > /dev/null
 
 start:
-    cargo run --release --bin maji > /dev/null
+    time cargo run --release --bin maji > /dev/null
 
 fg bin="baseline":
     cargo flamegraph --release --palette hot --bin={{bin}} > /dev/null

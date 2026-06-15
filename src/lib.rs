@@ -52,4 +52,15 @@ impl Aggregator {
     pub fn max(&self) -> f64 {
         self.max
     }
+
+    /// Merge another Aggregator into this one (combining min/max/sum/cnt).
+    pub fn merge(&mut self, other: &Self) {
+        self.min = self.min.min(other.min);
+        self.max = self.max.max(other.max);
+        self.sum += other.sum;
+        self.cnt += other.cnt;
+    }
 }
+
+pub mod async_io;
+pub mod multi_thread;
