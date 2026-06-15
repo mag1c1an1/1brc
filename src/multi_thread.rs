@@ -132,6 +132,11 @@ pub fn __main() {
         .unwrap_or(1)
         .min(bytes.len().max(1));
     let ranges = split_ranges(&bytes, worker_count);
+    let file = File::open(crate::FILE).unwrap();
+    // 8M
+    let reader = BufReader::with_capacity(8 * 1024 * 1024 * 1024, file);
+
+    const CHUNK_SIZE: usize = 5_000_000;
 
     let results = thread::scope(|scope| {
         let bytes = &bytes;
@@ -146,6 +151,34 @@ pub fn __main() {
 
     print_results(results);
 }
+    let mut handles = Vec::new();
+
+    let reduce = thread::spawn(move || {
+        let mut reduce_map: HashMap<String, Aggregator> = HashMap::new();
+        for map in rx {
+            for (station, other) in map {
+                reduce_map
+                    .entry(station)
+                    .and_modify(|agg| agg.merge(&other))
+                    .or_insert_with(|| other);
+            }
+        }
+        // sort then print
+        let mut out = reduce_map.into_iter().collect::<Vec<_>>();
+        out.sort_by(|(a, _), (b, _)| a.cmp(b));
+        print!("{{");
+        for (i, (s, agg)) in out.iter().enumerate() {
+            if i > 0 {
+                println!(",");
+            }
+            print!("{}={:.1}/{:.1}/{:.1}", s, agg.min(), agg.mean(), agg.max());
+        }
+        println!("}}");
+    });
+
+    handles.push(reduce);
+
+    let mut chunk = Vec::with_capacity(CHUNK_SIZE);
 
 #[cfg(test)]
 mod tests {
@@ -158,6 +191,25 @@ mod tests {
         assert_eq!(parse_temperature(b"0.0"), Some(0.0));
         assert_eq!(parse_temperature(b""), None);
         assert_eq!(parse_temperature(b"-"), None);
+        let tx = tx.clone();
+        let lines = std::mem::replace(&mut chunk, Vec::with_capacity(CHUNK_SIZE));
+        let handle = thread::spawn(move || {
+            // process chunks
+            let mut map: HashMap<String, Aggregator> = HashMap::new();
+            for line in lines {
+                let Some((station, val)) = line
+                    .split_once(';')
+                    .and_then(|(s, v)| v.parse::<f64>().ok().map(|val| (s, val)))
+                else {
+                    continue;
+                };
+                map.entry(station.to_string())
+                    .and_modify(|agg| agg.update(val))
+                    .or_insert_with(|| Aggregator::new(val));
+            }
+            tx.send(map).unwrap();
+        });
+        handles.push(handle);
     }
 
     #[test]
@@ -185,5 +237,7 @@ mod tests {
             start == 0
                 || bytes[start - 1] == b'\n' && (end == bytes.len() || bytes[end - 1] == b'\n')
         }));
+    for handle in handles {
+        handle.join().unwrap();
     }
 }
