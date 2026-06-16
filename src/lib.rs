@@ -1,19 +1,8 @@
 use std::f64;
 
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub mod async_io;
+pub mod multi_thread;
+pub mod single_thread;
 
 pub static FILE: &str = "./measurements.txt";
 
@@ -61,6 +50,3 @@ impl Aggregator {
         self.cnt += other.cnt;
     }
 }
-
-pub mod async_io;
-pub mod multi_thread;
