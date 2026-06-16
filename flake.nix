@@ -5,7 +5,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   };
 
-  outputs = {nixpkgs}: let
+  outputs = {nixpkgs, ...}: let
     systems = ["x86_64-linux"];
     forAllSystems = f:
       nixpkgs.lib.genAttrs systems (system:
