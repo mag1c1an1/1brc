@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+fxhash = "0.2.1"
 rand = "0.10.1"
 rand_distr = "0.6.0"
 tokio = { version = "1.52.3", features = ["full","io-uring"] }

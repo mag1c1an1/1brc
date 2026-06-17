@@ -4,6 +4,8 @@ use std::{
     io::{BufRead, BufReader},
 };
 
+use fxhash::{FxBuildHasher, FxHashMap};
+
 use crate::{Aggregator, I64Aggregator, parse_temperature, parse_temperature_by_bytes};
 
 pub fn v1() {
@@ -82,7 +84,7 @@ pub fn v2() {
 
 fn read_file_by_read_line(
     reader: &mut BufReader<File>,
-    map: &mut HashMap<String, I64Aggregator>,
+    map: &mut FxHashMap<String, I64Aggregator>,
     buf: &mut String,
 ) {
     loop {
@@ -157,11 +159,15 @@ pub fn read_file_by_bytes(reader: &mut BufReader<File>, map: &mut HashMap<Vec<u8
 pub fn v3() {
     let file = File::open(crate::FILE).unwrap();
     let mut reader = BufReader::with_capacity(8 * (1 << 10), file);
-    let mut map: HashMap<Vec<u8>, I64Aggregator> = HashMap::with_capacity(512); // 1brc only has 413 stations
+    // let mut map: HashMap<Vec<u8>, I64Aggregator> = HashMap::with_capacity(512); // 1brc only has 413 stations
+    let mut map: FxHashMap<String, I64Aggregator> =
+        FxHashMap::with_capacity_and_hasher(512, FxBuildHasher::new()); // 1brc only has 413 stations
 
-    // let mut buf = String::new();
+    let mut buf = String::new();
 
-    read_file_by_bytes(&mut reader, &mut map);
+    read_file_by_read_line(&mut reader, &mut map, &mut buf);
+
+    // read_file_by_bytes(&mut reader, &mut map);
 
     // loop {
     //     match reader.read_line(&mut buf) {
@@ -194,7 +200,8 @@ pub fn v3() {
         }
         print!(
             "{}={:.1}/{:.1}/{:.1}",
-            String::from_utf8_lossy(buf),
+            // String::from_utf8_lossy(buf),
+            buf,
             agg.min(),
             agg.mean(),
             agg.max()
