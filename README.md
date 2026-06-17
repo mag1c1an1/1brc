@@ -1,3 +1,16 @@
+# key note
+
+100,000,000
+
+single thread read
+
+```text
+Benchmark 1: target/release/maji > /dev/null
+  Time (mean ± σ):     118.5 ms ±   1.6 ms    [User: 9.1 ms, System: 108.6 ms]
+  Range (min … max):   115.9 ms … 122.2 ms    25 runs
+```
+
+
 # baseline
 
 100,000,000

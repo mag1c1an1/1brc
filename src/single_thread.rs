@@ -125,9 +125,9 @@ fn process_line_inner(line: &[u8], map: &mut FixedMap) {
     }
     let station = &line[..semi];
     let temp = &line[semi + 1..];
-    let val = parse_temperature_by_bytes(temp);
+    let value = parse_temperature_by_trick(temp);
 
-    map.update(station, val);
+    map.update(station, value);
 }
 
 fn process_line_and_compute_hash(line: &[u8], map: &mut FixedMap) {

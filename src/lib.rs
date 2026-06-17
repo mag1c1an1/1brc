@@ -12,6 +12,21 @@ pub mod single_thread;
 
 pub static FILE: &str = "./measurements.txt";
 
+fn only_read() {
+    use std::io::BufRead;
+    let file = std::fs::File::open(crate::FILE).unwrap();
+    let mut reader = std::io::BufReader::with_capacity(8 * (1 << 10), file);
+
+    loop {
+        let buf = reader.fill_buf().unwrap();
+        if buf.is_empty() {
+            break;
+        }
+        let consumed = buf.len();
+        reader.consume(consumed);
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Aggregator {
     min: f64,
