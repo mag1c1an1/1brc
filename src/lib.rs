@@ -97,6 +97,21 @@ impl I64Aggregator {
     }
 }
 
+pub fn parse_temperature_by_bytes(val: &[u8]) -> i64 {
+    let mut ans = 0;
+    let mut i = 0;
+    let is_negative = val[0] == b'-';
+    if is_negative {
+        i += 1;
+    }
+    while val[i] != b'.' {
+        ans = ans * 10 + (val[i] - b'0') as i64;
+        i += 1;
+    }
+    ans = ans * 10 + (val[i + 1] - b'0') as i64;
+    if is_negative { -ans } else { ans }
+}
+
 /// parse a temperature string into an i64 (e.g. "12.3" -> 123)
 pub fn parse_temperature(val: &str) -> i64 {
     let mut is_negative = false;
@@ -133,5 +148,14 @@ mod tests {
         assert_eq!(parse_temperature("-11.1"), -111);
         assert_eq!(parse_temperature("-0.1"), -1);
         assert_eq!(parse_temperature("-0.0"), 0);
+    }
+    #[test]
+    fn test_parse_temperature_by_bytes() {
+        assert_eq!(parse_temperature_by_bytes(b"11.1"), 111);
+        assert_eq!(parse_temperature_by_bytes(b"0.0"), 0);
+        assert_eq!(parse_temperature_by_bytes(b"1.1"), 11);
+        assert_eq!(parse_temperature_by_bytes(b"-11.1"), -111);
+        assert_eq!(parse_temperature_by_bytes(b"-0.1"), -1);
+        assert_eq!(parse_temperature_by_bytes(b"-0.0"), 0);
     }
 }
