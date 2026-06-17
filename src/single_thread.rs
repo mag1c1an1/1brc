@@ -7,7 +7,10 @@ use std::{
 
 use fxhash::{FxBuildHasher, FxHashMap, FxHasher};
 
-use crate::{Aggregator, FixedMap, I64Aggregator, parse_temperature, parse_temperature_by_bytes};
+use crate::{
+    Aggregator, FixedMap, I64Aggregator, parse_temperature, parse_temperature_by_bytes,
+    parse_temperature_by_trick,
+};
 
 pub fn v1() {
     let file = File::open(crate::FILE).unwrap();
@@ -136,7 +139,7 @@ fn process_line_and_compute_hash(line: &[u8], map: &mut FixedMap) {
     }
     let station = &line[..semi];
     let temp = &line[semi + 1..];
-    let value = parse_temperature_by_bytes(temp);
+    let value = parse_temperature_by_trick(temp);
     map.update_with_hash(h.finish(), station, value);
 }
 

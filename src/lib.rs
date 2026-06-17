@@ -110,6 +110,22 @@ impl Default for I64Aggregator {
     }
 }
 
+#[inline(always)]
+fn parse_temperature_by_trick(s: &[u8]) -> i64 {
+    let neg = s[0] == b'-';
+    let s = if neg { &s[1..] } else { s };
+
+    let v = if s[1] == b'.' {
+        // x.y
+        ((s[0] - b'0') as i64) * 10 + (s[2] - b'0') as i64
+    } else {
+        // xx.y
+        ((s[0] - b'0') as i64) * 100 + ((s[1] - b'0') as i64) * 10 + (s[3] - b'0') as i64
+    };
+
+    if neg { -v } else { v }
+}
+
 pub fn parse_temperature_by_bytes(val: &[u8]) -> i64 {
     let mut ans = 0;
     let mut i = 0;
@@ -253,5 +269,14 @@ mod tests {
         assert_eq!(parse_temperature_by_bytes(b"-11.1"), -111);
         assert_eq!(parse_temperature_by_bytes(b"-0.1"), -1);
         assert_eq!(parse_temperature_by_bytes(b"-0.0"), 0);
+    }
+    #[test]
+    fn test_parse_temperature_by_trick() {
+        assert_eq!(parse_temperature_by_trick(b"11.1"), 111);
+        assert_eq!(parse_temperature_by_trick(b"0.0"), 0);
+        assert_eq!(parse_temperature_by_trick(b"1.1"), 11);
+        assert_eq!(parse_temperature_by_trick(b"-11.1"), -111);
+        assert_eq!(parse_temperature_by_trick(b"-0.1"), -1);
+        assert_eq!(parse_temperature_by_trick(b"-0.0"), 0);
     }
 }
