@@ -6,7 +6,7 @@ use std::{
 
 use fxhash::{FxBuildHasher, FxHashMap};
 
-use crate::{Aggregator, I64Aggregator, parse_temperature, parse_temperature_by_bytes};
+use crate::{Aggregator, FixedMap, I64Aggregator, parse_temperature, parse_temperature_by_bytes};
 
 pub fn v1() {
     let file = File::open(crate::FILE).unwrap();
@@ -109,7 +109,7 @@ fn read_file_by_read_line(
     }
 }
 
-fn process_line(line: &[u8], map: &mut HashMap<Vec<u8>, I64Aggregator>) {
+fn process_line(line: &[u8], map: &mut FixedMap) {
     let mut semi = 0;
     while line[semi] != b';' {
         semi += 1;
@@ -117,15 +117,18 @@ fn process_line(line: &[u8], map: &mut HashMap<Vec<u8>, I64Aggregator>) {
     let station = &line[..semi];
     let temp = &line[semi + 1..];
     let val = parse_temperature_by_bytes(temp);
-    if let Some(agg) = map.get_mut(station) {
-        agg.update(val);
-    } else {
-        map.insert(station.to_vec(), I64Aggregator::new(val));
-    }
+
+    map.update(station, val);
+
+    // if let Some(agg) = map.get_mut(station) {
+    //     agg.update(val);
+    // } else {
+    //     map.insert(station.to_vec(), I64Aggregator::new(val));
+    // }
 }
 
 // parse
-pub fn read_file_by_bytes(reader: &mut BufReader<File>, map: &mut HashMap<Vec<u8>, I64Aggregator>) {
+fn read_file_by_bytes(reader: &mut BufReader<File>, map: &mut FixedMap) {
     let mut leftover = Vec::new();
     loop {
         let content = reader.fill_buf().unwrap();
@@ -159,15 +162,11 @@ pub fn read_file_by_bytes(reader: &mut BufReader<File>, map: &mut HashMap<Vec<u8
 pub fn v3() {
     let file = File::open(crate::FILE).unwrap();
     let mut reader = BufReader::with_capacity(8 * (1 << 10), file);
-    // let mut map: HashMap<Vec<u8>, I64Aggregator> = HashMap::with_capacity(512); // 1brc only has 413 stations
-    let mut map: FxHashMap<String, I64Aggregator> =
-        FxHashMap::with_capacity_and_hasher(512, FxBuildHasher::new()); // 1brc only has 413 stations
+    // let mut map: FxHashMap<Vec<u8>, I64Aggregator> =
+    //     FxHashMap::with_capacity_and_hasher(512, FxBuildHasher::new()); // 1brc only has 413 stations
+    let mut map = FixedMap::with_capacity(16384);
 
-    let mut buf = String::new();
-
-    read_file_by_read_line(&mut reader, &mut map, &mut buf);
-
-    // read_file_by_bytes(&mut reader, &mut map);
+    read_file_by_bytes(&mut reader, &mut map);
 
     // loop {
     //     match reader.read_line(&mut buf) {
@@ -190,8 +189,10 @@ pub fn v3() {
     //     }
     // }
 
-    let mut entries = map.into_iter().collect::<Vec<_>>();
-    entries.sort_by(|(s1, _), (s2, _)| s1.cmp(s2));
+    // let mut entries = map.into_iter().collect::<Vec<_>>();
+    // let mut entries = map.finish();
+    // entries.sort_by(|(s1, _), (s2, _)| s1.cmp(s2));
+    let entries = map.finish();
 
     print!("{{");
     for (i, (buf, agg)) in entries.iter().enumerate() {
@@ -200,8 +201,8 @@ pub fn v3() {
         }
         print!(
             "{}={:.1}/{:.1}/{:.1}",
-            // String::from_utf8_lossy(buf),
-            buf,
+            String::from_utf8_lossy(buf),
+            // buf,
             agg.min(),
             agg.mean(),
             agg.max()

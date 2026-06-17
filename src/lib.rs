@@ -1,4 +1,6 @@
-use std::{f64, panic};
+#![allow(unused)]
+
+use std::{arch::is_aarch64_feature_detected, collections::hash_map::Keys, f64, panic};
 
 pub mod async_io;
 pub mod multi_thread;
@@ -52,6 +54,7 @@ impl Aggregator {
     }
 }
 
+#[derive(Clone)]
 pub struct I64Aggregator {
     min: i64,
     max: i64,
@@ -97,6 +100,12 @@ impl I64Aggregator {
     }
 }
 
+impl Default for I64Aggregator {
+    fn default() -> Self {
+        Self::new(0)
+    }
+}
+
 pub fn parse_temperature_by_bytes(val: &[u8]) -> i64 {
     let mut ans = 0;
     let mut i = 0;
@@ -133,6 +142,76 @@ pub fn parse_temperature(val: &str) -> i64 {
         }
     }
     if is_negative { -ans } else { ans }
+}
+
+#[derive(Default, Clone)]
+struct Entry {
+    hash: u64,
+    key: Vec<u8>,
+    agg: I64Aggregator,
+    used: bool,
+}
+
+struct FixedMap {
+    cap: usize,
+    entries: Vec<Entry>,
+}
+
+impl FixedMap {
+    fn with_capacity(cap: usize) -> Self {
+        if !cap.is_power_of_two() {
+            panic!("cap must be a power of two: {cap}")
+        }
+        Self {
+            cap,
+            entries: vec![Entry::default(); cap],
+        }
+    }
+
+    fn update(&mut self, key: &[u8], value: i64) {
+        let hash = fast_hash(key);
+        let mut idx = (hash as usize) & (self.cap - 1);
+        loop {
+            let e = &mut self.entries[idx];
+            if !e.used {
+                e.used = true;
+                e.hash = hash;
+                e.key.extend_from_slice(key);
+                e.agg = I64Aggregator::new(value);
+                return;
+            }
+
+            if e.hash == hash && e.key.as_slice() == key {
+                e.agg.update(value);
+                return;
+            }
+
+            idx = (idx + 1) & (self.cap - 1);
+        }
+    }
+
+    pub fn finish(self) -> Vec<(Vec<u8>, I64Aggregator)> {
+        let mut result = self
+            .entries
+            .into_iter()
+            .filter(|e| e.used)
+            .map(|e| (e.key, e.agg))
+            .collect::<Vec<_>>();
+
+        // result.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+        result.sort_by(|a, b| a.0.cmp(&b.0));
+        result
+    }
+}
+
+// FNV-1a hash function
+fn fast_hash(key: &[u8]) -> u64 {
+    let mut hash = 0xcbf29ce484222325u64;
+    for &b in key {
+        hash ^= b as u64;
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    hash
 }
 
 #[cfg(test)]
