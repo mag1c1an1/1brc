@@ -151,7 +151,8 @@ pub fn parse_temperature(val: &str) -> i64 {
 #[derive(Default, Clone)]
 struct Entry {
     hash: u64,
-    key: Vec<u8>,
+    key: [u8; 32],
+    len: u8,
     agg: I64Aggregator,
     used: bool,
 }
@@ -180,12 +181,13 @@ impl FixedMap {
             if !e.used {
                 e.used = true;
                 e.hash = hash;
-                e.key.extend_from_slice(key);
+                e.key[..key.len()].copy_from_slice(key);
+                e.len = key.len() as u8;
                 e.agg = I64Aggregator::new(value);
                 return;
             }
 
-            if e.hash == hash && e.key.as_slice() == key {
+            if e.hash == hash && e.len as usize == key.len() && &e.key[..e.len as usize] == key {
                 e.agg.update(value);
                 return;
             }
@@ -199,7 +201,7 @@ impl FixedMap {
             .entries
             .into_iter()
             .filter(|e| e.used)
-            .map(|e| (e.key, e.agg))
+            .map(|e| (e.key[..e.len as usize].to_vec(), e.agg))
             .collect::<Vec<_>>();
 
         // result.sort_unstable_by(|a, b| a.0.cmp(&b.0));
