@@ -175,6 +175,10 @@ impl FixedMap {
 
     fn update(&mut self, key: &[u8], value: i64) {
         let hash = fast_hash(key);
+        self.update_with_hash(hash, key, value);
+    }
+
+    fn update_with_hash(&mut self, hash: u64, key: &[u8], value: i64) {
         let mut idx = (hash as usize) & (self.cap - 1);
         loop {
             let e = &mut self.entries[idx];

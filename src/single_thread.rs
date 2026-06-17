@@ -1,10 +1,11 @@
 use std::{
     collections::HashMap,
     fs::File,
+    hash::Hasher,
     io::{BufRead, BufReader},
 };
 
-use fxhash::{FxBuildHasher, FxHashMap};
+use fxhash::{FxBuildHasher, FxHashMap, FxHasher};
 
 use crate::{Aggregator, FixedMap, I64Aggregator, parse_temperature, parse_temperature_by_bytes};
 
@@ -110,6 +111,11 @@ fn read_file_by_read_line(
 }
 
 fn process_line(line: &[u8], map: &mut FixedMap) {
+    process_line_and_compute_hash(line, map);
+    // process_line_inner(line, map);
+}
+
+fn process_line_inner(line: &[u8], map: &mut FixedMap) {
     let mut semi = 0;
     while line[semi] != b';' {
         semi += 1;
@@ -119,12 +125,19 @@ fn process_line(line: &[u8], map: &mut FixedMap) {
     let val = parse_temperature_by_bytes(temp);
 
     map.update(station, val);
+}
 
-    // if let Some(agg) = map.get_mut(station) {
-    //     agg.update(val);
-    // } else {
-    //     map.insert(station.to_vec(), I64Aggregator::new(val));
-    // }
+fn process_line_and_compute_hash(line: &[u8], map: &mut FixedMap) {
+    let mut semi = 0;
+    let mut h = FxHasher::default();
+    while line[semi] != b';' {
+        h.write_u8(line[semi]);
+        semi += 1;
+    }
+    let station = &line[..semi];
+    let temp = &line[semi + 1..];
+    let value = parse_temperature_by_bytes(temp);
+    map.update_with_hash(h.finish(), station, value);
 }
 
 // parse
