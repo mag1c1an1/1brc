@@ -1,6 +1,10 @@
 #![allow(unused)]
 
-use std::{arch::is_aarch64_feature_detected, collections::hash_map::Keys, f64, panic};
+use std::{
+    arch::is_aarch64_feature_detected, collections::hash_map::Keys, f64, hash::Hasher, panic,
+};
+
+use fxhash::{FxHasher, hash64};
 
 pub mod async_io;
 pub mod multi_thread;
@@ -204,14 +208,21 @@ impl FixedMap {
     }
 }
 
-// FNV-1a hash function
+// // FNV-1a hash function
+// fn fast_hash(key: &[u8]) -> u64 {
+//     let mut hash = 0xcbf29ce484222325u64;
+//     for &b in key {
+//         hash ^= b as u64;
+//         hash = hash.wrapping_mul(0x100000001b3);
+//     }
+//     hash
+// }
+
+// use fxhash
 fn fast_hash(key: &[u8]) -> u64 {
-    let mut hash = 0xcbf29ce484222325u64;
-    for &b in key {
-        hash ^= b as u64;
-        hash = hash.wrapping_mul(0x100000001b3);
-    }
-    hash
+    let mut h = FxHasher::default();
+    h.write(key);
+    h.finish()
 }
 
 #[cfg(test)]
