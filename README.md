@@ -25,3 +25,30 @@ multithread
 
 
 perf 降低频率
+
+--- 1,000,000,000
+
+baseline: 
+```text
+hyperfine --warmup 3 'target/release/baseline > /dev/null'
+Benchmark 1: target/release/baseline > /dev/null
+  Time (mean ± σ):     93.786 s ±  2.240 s    [User: 90.985 s, System: 1.343 s]
+  Range (min … max):   90.903 s … 98.151 s    10 runs
+```
+
+
+deepseek:
+```text
+hyperfine --warmup 3 'target/release/maji > /dev/null'
+Benchmark 1: target/release/maji > /dev/null
+  Time (mean ± σ):      2.657 s ±  0.143 s    [User: 39.207 s, System: 0.408 s]
+  Range (min … max):    2.480 s …  2.910 s    10 runs
+```
+
+codex:
+```text
+hyperfine --warmup 3 'target/release/maji > /dev/null'
+Benchmark 1: target/release/maji > /dev/null
+  Time (mean ± σ):      7.744 s ±  0.141 s    [User: 34.126 s, System: 4.647 s]
+  Range (min … max):    7.585 s …  8.048 s    10 runs
+```

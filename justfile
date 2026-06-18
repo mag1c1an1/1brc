@@ -1,5 +1,6 @@
 create:
     cargo run --release --bin measurements 1000000000
+    cargo run --release --bin baseline > baseline.ans
 
 release-build:
     cargo build --release
