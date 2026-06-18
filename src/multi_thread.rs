@@ -1,6 +1,8 @@
 use std::{collections::HashMap, fs::File, io::Read, thread};
 
-use crate::Aggregator;
+use memmap2::Mmap;
+
+use crate::{Aggregator, FixedMap, output, process_line_and_compute_hash};
 
 fn parse_temperature(bytes: &[u8]) -> Option<f64> {
     if bytes.is_empty() {
@@ -121,17 +123,7 @@ fn print_results(results: Vec<HashMap<String, Aggregator>>) {
     println!("}}");
 }
 
-pub fn __main() {
-    let mut file = File::open(crate::FILE).unwrap();
-    let file_size = file.metadata().unwrap().len() as usize;
-    let mut bytes = Vec::with_capacity(file_size);
-    file.read_to_end(&mut bytes).unwrap();
-
-    let worker_count = thread::available_parallelism()
-        .map(|count| count.get())
-        .unwrap_or(1)
-        .min(bytes.len().max(1));
-    let ranges = split_ranges(&bytes, worker_count);
+fn v1() {
     let file = File::open(crate::FILE).unwrap();
     // 8M
     let reader = BufReader::with_capacity(8 * 1024 * 1024 * 1024, file);
@@ -240,4 +232,75 @@ mod tests {
     for handle in handles {
         handle.join().unwrap();
     }
+}
+
+#[inline(always)]
+fn next_newline(data: &[u8], mut i: usize) -> usize {
+    while i < data.len() && data[i] != b'\n' {
+        i += 1;
+    }
+    i
+}
+
+fn process_chunk(chunk: &[u8], map: &mut FixedMap) {
+    let mut start = 0;
+
+    for i in 0..chunk.len() {
+        // todo(jiax): use memchr
+        if chunk[i] == b'\n' {
+            if i > start {
+                process_line_and_compute_hash(&chunk[start..i], map);
+            }
+            start = i + 1;
+        }
+    }
+
+    // 处理最后一行没有 '\n' 的情况
+    if start < chunk.len() {
+        process_line_and_compute_hash(&chunk[start..], map);
+    }
+}
+
+fn v2() {
+    // mmap
+    let file = File::open(crate::FILE).unwrap();
+    let mmap = unsafe { Mmap::map(&file).unwrap() };
+    let n = num_cpus();
+    let len = mmap.len();
+    std::thread::scope(|s| {
+        let (tx, rx) = std::sync::mpsc::channel::<FixedMap>();
+        for tid in 0..n {
+            let data = &mmap;
+            let tx = tx.clone();
+            s.spawn(move || {
+                let raw_start = len * tid / n;
+                let raw_end = len * (tid + 1) / n;
+                let start = if tid == 0 {
+                    0
+                } else {
+                    next_newline(data, raw_start) + 1
+                };
+                let end = if tid + 1 == n {
+                    len
+                } else {
+                    next_newline(data, raw_end) + 1
+                };
+                let mut map = FixedMap::with_capacity(1 << 14);
+                process_chunk(&data[start..end], &mut map);
+                tx.send(map).unwrap();
+            });
+        }
+        drop(tx);
+
+        let mut reduce = FixedMap::with_capacity(1 << 14);
+        for other in rx {
+            reduce.merge(other);
+        }
+        let entries = reduce.finish();
+        output(entries);
+    });
+}
+
+pub fn __main() {
+    v2();
 }

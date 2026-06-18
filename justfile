@@ -1,5 +1,5 @@
 create:
-    cargo run --release --bin measurements 100000000
+    cargo run --release --bin measurements 1000000000
 
 release-build:
     cargo build --release

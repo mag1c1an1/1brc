@@ -26,6 +26,36 @@ fn only_read() {
         reader.consume(consumed);
     }
 }
+fn process_line_and_compute_hash(line: &[u8], map: &mut FixedMap) {
+    let mut semi = 0;
+    let mut h = FxHasher::default();
+    while line[semi] != b';' {
+        h.write_u8(line[semi]);
+        semi += 1;
+    }
+    let station = &line[..semi];
+    let temp = &line[semi + 1..];
+    let value = parse_temperature_by_trick(temp);
+    map.update_with_hash(h.finish(), station, value);
+}
+// assume entries are sorted
+fn output(mut entries: Vec<(Vec<u8>, I64Aggregator)>) {
+    print!("{{");
+    for (i, (buf, agg)) in entries.iter().enumerate() {
+        if i > 0 {
+            println!(",");
+        }
+        print!(
+            "{}={:.1}/{:.1}/{:.1}",
+            String::from_utf8_lossy(buf),
+            // buf,
+            agg.min(),
+            agg.mean(),
+            agg.max()
+        );
+    }
+    println!("}}");
+}
 
 #[derive(Debug, Clone)]
 pub struct Aggregator {
@@ -209,6 +239,27 @@ impl FixedMap {
         self.update_with_hash(hash, key, value);
     }
 
+    fn update_entry(&mut self, other: Entry) {
+        let mut idx = (other.hash as usize) & (self.cap - 1);
+        loop {
+            let e = &mut self.entries[idx];
+            if !e.used {
+                *e = other;
+                return;
+            }
+
+            if e.hash == other.hash
+                && e.len == other.len
+                && &e.key[..e.len as usize] == &other.key[..other.len as usize]
+            {
+                e.agg.merge(&other.agg);
+                return;
+            }
+
+            idx = (idx + 1) & (self.cap - 1);
+        }
+    }
+
     fn update_with_hash(&mut self, hash: u64, key: &[u8], value: i64) {
         let mut idx = (hash as usize) & (self.cap - 1);
         loop {
@@ -228,6 +279,14 @@ impl FixedMap {
             }
 
             idx = (idx + 1) & (self.cap - 1);
+        }
+    }
+
+    fn merge(&mut self, other: FixedMap) {
+        for e in other.entries {
+            if e.used {
+                self.update_entry(e)
+            }
         }
     }
 

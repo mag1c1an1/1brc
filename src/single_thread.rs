@@ -9,7 +9,7 @@ use fxhash::{FxBuildHasher, FxHashMap, FxHasher};
 
 use crate::{
     Aggregator, FixedMap, I64Aggregator, parse_temperature, parse_temperature_by_bytes,
-    parse_temperature_by_trick,
+    parse_temperature_by_trick, process_line_and_compute_hash,
 };
 
 pub fn v1() {
@@ -130,18 +130,7 @@ fn process_line_inner(line: &[u8], map: &mut FixedMap) {
     map.update(station, value);
 }
 
-fn process_line_and_compute_hash(line: &[u8], map: &mut FixedMap) {
-    let mut semi = 0;
-    let mut h = FxHasher::default();
-    while line[semi] != b';' {
-        h.write_u8(line[semi]);
-        semi += 1;
-    }
-    let station = &line[..semi];
-    let temp = &line[semi + 1..];
-    let value = parse_temperature_by_trick(temp);
-    map.update_with_hash(h.finish(), station, value);
-}
+
 
 // parse
 fn read_file_by_bytes(reader: &mut BufReader<File>, map: &mut FixedMap) {

@@ -22,3 +22,6 @@ Benchmark 1: cargo run --release --bin baseline > /dev/null
 
 ---
 multithread
+
+
+perf 降低频率
