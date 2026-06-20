@@ -6,6 +6,8 @@ use std::{
 
 use fxhash::{FxHasher, hash64};
 
+mod hash_table;
+
 pub mod async_io;
 pub mod multi_thread;
 pub mod single_thread;

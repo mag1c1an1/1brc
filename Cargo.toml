@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+allocator-api2 = "0.4.0"
 fxhash = "0.2.1"
 memmap2 = "0.9.10"
 rand = "0.10.1"
